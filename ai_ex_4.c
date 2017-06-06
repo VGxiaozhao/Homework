@@ -13,8 +13,15 @@ int sumfitness;
 
 int f(int x)
 {
-	//return -x*x+16*x-3;
-	return x*x;
+	return -x*x+16*x-3;
+	//return x*x;
+}
+
+void change(int *a,int u)
+{
+    int tmp = 0;
+    tmp = (*a)%(1<<u);
+    *a = (((*a)>>u)^1)<<u|tmp;
 }
 
 void crossover(int* a, int *b)
@@ -29,14 +36,23 @@ void crossover(int* a, int *b)
 	}
 	if ((*a)&(1 << u) != (*b)&(1 << u))
 	{
-		*a ^= 1 << u;
-		*b ^= 1 << u;
+		//*a ^= (1 << u);
+		//*b ^= (1 << u);
+		change(a,u);
+		change(b,u);
 	}
 	if ((*a)&(1 << v) != (*b)&(1 << v))
 	{
-		*a ^= 1 << v;
-		*b ^= 1 << v;
+//		*a ^= (1 << v);
+//		*b ^= (1 << v);
+        change(a,v);
+        change(b,v);
 	}
+	if(*a>=1<<L||*b>=1<<L)
+    {
+        printf("%d %d",u,v);
+        puts("what?");
+    }
 	sumfitness += f(*a);
 	sumfitness += f(*b);
 }
@@ -53,7 +69,8 @@ void mutate(int *a)
 {
 	sumfitness -= f(*a);
 	int i = myRand() % L;
-	*a ^= 1 << L;
+	//*a ^= 1 << L;
+	change(a,i);
 	sumfitness += f(*a);
 }
 
@@ -111,8 +128,11 @@ void findtomutate()
 
 void test()
 {
-	for (int i = 0; i<32; i++)
-		printf("%d %d\n", i, f(i));
+//	for (int i = 0; i<32; i++)
+//		printf("%d %d\n", i, f(i));
+    int a = 5;  //00101
+    change(&a,4);
+    printf("%d\n",a);
 }
 
 int main()
@@ -126,12 +146,13 @@ int main()
 	while (T--)
 	{
 		doSelect(8);
-		findtocross(tol / 2);
+		findtocross(tol / 2 * 3);
 		findtomutate();
 	}
-	for (int i = 0; i<M; i++)
+	doSelect(8);
+	for (int i = 0; i<tol; i++)
 	{
-		cnt[animal[i]]++;
+		cnt[animal[selectqueue[i]]]++;
 	}
 	for (int i = 0; i<(1 << L); i++)
 	{
@@ -142,6 +163,6 @@ int main()
 		}
 	}
 	printf("%d\n", ans);
-	_sleep(1000);
+	//_sleep(1000);
 	return 0;
 }
