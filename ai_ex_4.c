@@ -42,12 +42,12 @@ void crossover(int a, int b, int *x, int *y)		//交叉两个数，产生两个�
 		u = myRand() % L;
 		v = myRand() % L;
 	}
-	if ((a >> u) != (b >> u))
+	if ((a >> u)&1 != (b >> u)&1)
 	{
 		change(x, u);
 		change(y, u);
 	}
-	if ((a >> v) != (b >> v))
+	if ((a >> v)&1 != (b >> v)&1)
 	{
 		change(x, v);
 		change(y, v);
@@ -134,7 +134,7 @@ void output()
 
 int main()
 {
-	int T = 200;		//迭代次数
+	int T = 100;		//迭代次数
 	int cnt[1 << (L + 1)] = { 0 };
 	int ans = -1, maxshow = 0;
 	srand(time(NULL));
@@ -145,6 +145,7 @@ int main()
 		findtocross();
 		findtomutate();
 	}
+	output();
 	for (int i = 0; i<tol; i++)
 	{
 		cnt[animal[i]]++;
