@@ -4,60 +4,15 @@
 #include <string.h>
 #define M 32 //种群数量
 #define L 5   //二进制位数
-#define MUTATE_RATE 5
+#define MUTATE_RATE 2
 #define MOD 100000007
+#define SELECT_SIZE M/2
+#define RANDOM_SELECT_RATE 10
 int animal[M];
 int selected[M] = { 0 };
 int selectqueue[M], tol = 0;
-int sumfitness;
 
-int f(int x)
-{
-	return -x*x+16*x-3;
-	//return x*x;
-}
-
-void change(int *a,int u)
-{
-    int tmp = 0;
-    tmp = (*a)%(1<<u);
-    *a = (((*a)>>u)^1)<<u|tmp;
-}
-
-void crossover(int* a, int *b)
-{
-	sumfitness -= f(*a);
-	sumfitness -= f(*b);
-	int u = 1, v = 1;
-	while (u == v)
-	{
-		u = rand() % L;
-		v = rand() % L;
-	}
-	if ((*a)&(1 << u) != (*b)&(1 << u))
-	{
-		//*a ^= (1 << u);
-		//*b ^= (1 << u);
-		change(a,u);
-		change(b,u);
-	}
-	if ((*a)&(1 << v) != (*b)&(1 << v))
-	{
-//		*a ^= (1 << v);
-//		*b ^= (1 << v);
-        change(a,v);
-        change(b,v);
-	}
-	if(*a>=1<<L||*b>=1<<L)
-    {
-        printf("%d %d",u,v);
-        puts("what?");
-    }
-	sumfitness += f(*a);
-	sumfitness += f(*b);
-}
-
-int myRand()          //
+int myRand()          //C语言rand函数随机性太差，封装一个自己的
 {
 	int ret = 1;
 	for (int i = 0; i<5; i++)
@@ -65,59 +20,103 @@ int myRand()          //
 	return ret;
 }
 
-void mutate(int *a)
+int f(int x)
 {
-	sumfitness -= f(*a);
-	int i = myRand() % L;
-	//*a ^= 1 << L;
-	change(a,i);
-	sumfitness += f(*a);
+	return -x*x + 16 * x - 3;
 }
 
-void init()
+void change(int *a, int u)	//将a二进制数上第u个取反
 {
-	int i, j;
-	sumfitness = 0;
-	for (i = 0; i<M; i++)
+	int tmp = 0;
+	tmp = (*a) % (1 << u);
+	*a = (((*a) >> u) ^ 1) << u | tmp;
+}
+
+void crossover(int a, int b, int *x, int *y)		//交叉两个数，产生两个新数
+{
+	int u = 1, v = 1;
+	*x = a;
+	*y = b;
+	while (u == v)
 	{
-		animal[i] = myRand() % (1 << L);
-		sumfitness += f(animal[i]);
+		u = myRand() % L;
+		v = myRand() % L;
+	}
+	if ((a >> u) != (b >> u))
+	{
+		change(x, u);
+		change(y, u);
+	}
+	if ((a >> v) != (b >> v))
+	{
+		change(x, v);
+		change(y, v);
 	}
 }
 
-int doSelect(int times)
+void mutate(int *a)			//变异
+{
+	int i = myRand() % L;
+	change(a, i);
+}
+
+void init()					//初始化产生种群
+{
+	int i, j;
+	for (i = 0; i < M; i++)
+	{
+		animal[i] = myRand() % (1 << L);
+	}
+}
+
+int getFitness()			//计算群体适应度
+{
+	int ret = 0;
+	for (int i = 0; i<M; i++)
+		ret += f(animal[i]);
+	return ret;
+}
+
+void doSelect(int times)		//选择操作
 {
 	int ret = 0;
 	tol = 0;
 	memset(selected, 0, sizeof(selected));
-	while (tol<times)
+	int sumfitness = getFitness();
+	while (times--)
 	for (int i = 0; i<M; i++)
 	{
-		if (f(animal[i])>myRand() % sumfitness && !selected[i])
+		if (!selected[i] && f(animal[i])>myRand() % sumfitness)
 		{
 			selected[i] = 1;
-			selectqueue[tol++] = i;
+			selectqueue[tol++] = animal[i];
 		}
 	}
-	return ret;
+	for (int i = 0; i < M&&tol < SELECT_SIZE; i = (i+1)%M)
+	{
+		if (!selected[i] && myRand() % 100 < RANDOM_SELECT_RATE)
+		{
+			selected[i] = 1;
+			selectqueue[tol++] = animal[i];
+		}
+	}
 }
 
-void findtocross(int times)
+void findtocross()			//选择交叉操作，并将没被选择的个体淘汰
 {
 	int u = 1, v = 1;
-	while (times--)
+	for (int i = 0; i<SELECT_SIZE; i += 2)
 	{
-		u = v = 1;
-		while (u == v)
-		{
-			u = rand() % tol;
-			v = rand() % tol;
-		}
-		crossover(&animal[selectqueue[u]], &animal[selectqueue[v]]);
+		int x = 1, y = 1;
+		crossover(selectqueue[i], selectqueue[i + 1], &x, &y);
+		animal[i] = x;
+		animal[i + 1] = y;
 	}
+	for (int i = 0; i<tol; i++)
+		animal[i + SELECT_SIZE] = selectqueue[i];
 }
 
-void findtomutate()
+void findtomutate()			//选择变异
 {
 	for (int i = 0; i<M; i++)
 	{
@@ -126,33 +125,29 @@ void findtomutate()
 	}
 }
 
-void test()
+void output()
 {
-//	for (int i = 0; i<32; i++)
-//		printf("%d %d\n", i, f(i));
-    int a = 5;  //00101
-    change(&a,4);
-    printf("%d\n",a);
+	for (int i = 0; i<M; i++)
+		printf("%d ", animal[i]);
+	puts("");
 }
 
 int main()
 {
-	//test();
-	int T = 100;
-	int cnt[1 << L+1] = { 0 };
+	int T = 200;		//迭代次数
+	int cnt[1 << (L + 1)] = { 0 };
 	int ans = -1, maxshow = 0;
 	srand(time(NULL));
 	init();
 	while (T--)
 	{
 		doSelect(8);
-		findtocross(tol / 2 * 3);
+		findtocross();
 		findtomutate();
 	}
-	doSelect(8);
 	for (int i = 0; i<tol; i++)
 	{
-		cnt[animal[selectqueue[i]]]++;
+		cnt[animal[i]]++;
 	}
 	for (int i = 0; i<(1 << L); i++)
 	{
@@ -162,7 +157,6 @@ int main()
 			ans = i;
 		}
 	}
-	printf("%d\n", ans);
-	//_sleep(1000);
+	printf("种群中性状出现最多的是：%d\n", ans);
 	return 0;
 }
